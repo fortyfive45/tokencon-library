@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>TokenCon Library</title>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+/* ── Reset ───────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}
+
+/* ── CSS Variables (Check-In = default / green) ─────────────── */
+:root{
+  --hdr:#2e7d32;    /* header background      */
+  --pg:#c8e6c9;     /* page background         */
+  --btn:#388e3c;    /* button fill             */
+  --acc:#1b5e20;    /* accent / GO button      */
+  --ring:#a5d6a7;   /* input focus ring        */
+}
+body.co{--hdr:#e65100;--pg:#fff9c4;--btn:#ef6c00;--acc:#bf360c;--ring:#ffcc02}
+body.lu{--hdr:#1565c0;--pg:#e3f2fd;--btn:#1976d2;--acc:#0d47a1;--ring:#90caf9}
+
+body{background:var(--pg);transition:background .25s}
+
+/* ── Header ──────────────────────────────────────────────────── */
+#hdr{background:var(--hdr);color:#fff;padding:10px 12px 8px;position:sticky;top:0;z-index:50;transition:background .25s}
+#hdr h1{font-size:1.15rem;font-weight:700;text-align:center;margin-bottom:7px}
+.mode-row{display:flex;gap:5px;justify-content:center}
+.mbtn{padding:6px 11px;border:2px solid rgba(255,255,255,.55);background:transparent;color:#fff;border-radius:20px;font-size:.72rem;font-weight:700;cursor:pointer;letter-spacing:.4px;transition:all .2s}
+.mbtn.on{background:#fff;color:var(--hdr);border-color:#fff}
+
+/* ── Name bar ────────────────────────────────────────────────── */
+#namebar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,.5);border-bottom:1px solid rgba(0,0,0,.07)}
+#namebar label{font-size:.8rem;font-weight:700;color:#333;white-space:nowrap}
+#vname{flex:1;padding:6px 9px;border:1px solid #ccc;border-radius:6px;font-size:.9rem}
+#vname:focus{outline:none;border-color:var(--hdr);box-shadow:0 0 0 2px var(--ring)}
+
+/* ── Warning banner ──────────────────────────────────────────── */
+#warn{display:none;background:#c62828;color:#fff;text-align:center;padding:7px 12px;font-size:.82rem;font-weight:700}
+
+/* ── Camera section ─────────────────────────────────────────── */
+#cam-wrap{padding:8px 12px 4px}
+#qr-reader{width:100%;max-width:420px;margin:0 auto;border-radius:10px;overflow:hidden;background:#000}
+/* suppress default html5-qrcode chrome */
+#qr-reader img[alt="Info icon"]{display:none!important}
+#qr-reader__dashboard_section_csr button{display:none!important}
+#qr-reader__dashboard_section_fsr{display:none!important}
+#qr-reader__status_span{display:none!important}
+#qr-reader__header_message{display:none!important}
+#qr-reader__filescan_input{display:none!important}
+
+/* ── Input row ───────────────────────────────────────────────── */
+#input-row{display:flex;align-items:center;gap:6px;padding:6px 12px;max-width:444px;margin:0 auto}
+#btn-type{padding:8px 11px;background:var(--btn);color:#fff;border:none;border-radius:7px;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .2s}
+#manual-in{flex:1;padding:8px 9px;border:1px solid #bbb;border-radius:7px;font-size:1rem;display:none}
+#manual-in:focus{outline:none;border-color:var(--hdr);box-shadow:0 0 0 2px var(--ring)}
+#btn-go{padding:8px 18px;background:var(--acc);color:#fff;border:none;border-radius:7px;font-size:.95rem;font-weight:700;cursor:pointer;display:none;transition:background .2s}
+#usb-in{position:fixed;top:-200px;left:-200px;width:1px;height:1px;opacity:0;pointer-events:none}
+
+/* ── Sound toggle ────────────────────────────────────────────── */
+#sound-row{text-align:center;padding:2px 0 4px}
+#btn-sound{background:none;border:none;font-size:.78rem;color:#666;cursor:pointer;padding:3px 8px}
+
+/* ── History ─────────────────────────────────────────────────── */
+#hist-wrap{padding:4px 12px 16px;max-width:444px;margin:0 auto}
+.hist-lbl{font-size:.7rem;font-weight:700;color:#666;text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(0,0,0,.1);padding-top:6px;margin-bottom:5px}
+.hist-empty{text-align:center;color:#999;font-size:.82rem;padding:14px 0}
+
+/* scan card */
+.sc{background:#fff;border-radius:9px;padding:9px 11px;margin-bottom:6px;display:flex;align-items:center;gap:9px;box-shadow:0 1px 4px rgba(0,0,0,.09);animation:fadeIn .2s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.sc.err{background:#ffebee;border-left:4px solid #e53935}
+.sc.prc{background:#f5f5f5;opacity:.65}
+.sc-ico{font-size:1.1rem;flex-shrink:0}
+.sc-body{flex:1;min-width:0}
+.sc-name{font-size:.88rem;font-weight:700;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc-sub{font-size:.75rem;color:#666;margin-top:2px}
+.sc-err-main{font-size:.84rem;font-weight:700;color:#c62828}
+.sc-err-sub{font-size:.73rem;color:#e53935;margin-top:2px}
+.sc-right{flex-shrink:0;max-width:130px;text-align:right}
+
+/* section badge */
+.badge{display:inline-block;padding:4px 9px;border-radius:11px;font-size:.72rem;font-weight:700;white-space:nowrap}
+
+/* source text (check-out) */
+.src-txt{font-size:.82rem;font-weight:700;color:#111;word-break:break-word;text-align:right}
+
+/* ── Lookup section ──────────────────────────────────────────── */
+#lu-wrap{display:none;padding:10px 12px;max-width:444px;margin:0 auto}
+.lu-row{display:flex;gap:6px;margin-bottom:10px}
+#lu-q{flex:1;padding:10px 9px;border:1px solid #bbb;border-radius:7px;font-size:.95rem}
+#lu-q:focus{outline:none;border-color:var(--hdr);box-shadow:0 0 0 2px var(--ring)}
+#btn-search{padding:10px 14px;background:var(--btn);color:#fff;border:none;border-radius:7px;font-size:.88rem;font-weight:600;cursor:pointer}
+#lu-results{color:#999;font-size:.82rem;text-align:center;padding:12px 0}
+.lr{background:#fff;border-radius:9px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.09)}
+.lr-name{font-size:.92rem;font-weight:700;color:#111;margin-bottom:3px}
+.lr-detail{font-size:.77rem;color:#555;line-height:1.55}
+.stat-badge{display:inline-block;padding:2px 7px;border-radius:9px;font-size:.68rem;font-weight:700}
+.s-in{background:#c8e6c9;color:#1b5e20}
+.s-out{background:#fff9c4;color:#e65100}
+.s-none{background:#eee;color:#666}
+
+/* ── Scan overlay (processing) ───────────────────────────────── */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:200;align-items:center;justify-content:center}
+#overlay.show{display:flex}
+#overlay span{background:#fff;border-radius:12px;padding:16px 28px;font-size:.95rem;color:#333;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+
+/* ── Desktop USB indicator ───────────────────────────────────── */
+#usb-indicator{display:none;text-align:center;font-size:.75rem;color:#555;padding:2px 0}
+body.desktop #usb-indicator{display:block}
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="overlay"><span>⏳ Processing…</span></div>
+
+<!-- Header -->
+<div id="hdr">
+  <h1>🎲 TokenCon Library</h1>
+  <div class="mode-row">
+    <button class="mbtn on" id="mbtn-ci" onclick="setMode('ci')">✅ CHECK IN</button>
+    <button class="mbtn"    id="mbtn-co" onclick="setMode('co')">📦 CHECK OUT</button>
+    <button class="mbtn"    id="mbtn-lu" onclick="setMode('lu')">🔍 LOOKUP</button>
+  </div>
+</div>
+
+<!-- Volunteer name -->
+<div id="namebar">
+  <label for="vname">Your Name:</label>
+  <input id="vname" type="text" placeholder="Enter your name" autocomplete="name"
+         oninput="saveName()" />
+</div>
+
+<!-- Warning banner -->
+<div id="warn"></div>
+
+<!-- ── Scan section (check-in / check-out) ───────────────────── -->
+<div id="scan-sec">
+
+  <div id="cam-wrap">
+    <div id="qr-reader"></div>
+  </div>
+
+  <!-- USB scanner indicator (desktop only) -->
+  <div id="usb-indicator">📡 USB Scanner ready — point scanner at a QR code</div>
+
+  <!-- Manual input row -->
+  <div id="input-row">
+    <button id="btn-type" onclick="toggleManual()">⌨️ Type manually</button>
+    <input  id="manual-in" type="number" inputmode="numeric" placeholder="Catalog #"
+            onkeydown="manualKey(event)" />
+    <button id="btn-go" onclick="manualGo()">GO</button>
+    <button id="btn-sound" onclick="toggleSound()">🔊</button>
+  </div>
+
+  <!-- Hidden USB scanner capture field -->
+  <input id="usb-in" type="text" autocomplete="off" autocorrect="off"
+         spellcheck="false" tabindex="-1" onkeydown="usbKey(event)" />
+
+  <div id="sound-row"></div>
+
+  <!-- Recent scans -->
+  <div id="hist-wrap">
+    <div class="hist-lbl">Recent Scans</div>
+    <div id="hist"><div class="hist-empty">Scans will appear here</div></div>
+  </div>
+</div>
+
+<!-- ── Lookup section ─────────────────────────────────────────── -->
+<div id="lu-wrap">
+  <div class="lu-row">
+    <input id="lu-q" type="text" placeholder="Search by game name or catalog #"
+           onkeydown="luKey(event)" />
+    <button id="btn-search" onclick="doSearch()">Search</button>
+  </div>
+  <div id="lu-results">Enter a name or catalog number to search</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURATION  ← UPDATE THIS after deploying Apps Script
+// ═══════════════════════════════════════════════════════════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwUDbu_S8m_u8UPAbJrKVK8HAQIDt8pRcNsDpQIMgelBn1kTjRugwDxXGY-j4AyDXNBHg/exec';
+
+// ═══════════════════════════════════════════════════════════════
+// SECTION BADGE COLORS
+// ═══════════════════════════════════════════════════════════════
+const SECTION_COLORS = {
+  'Main': { bg:'#757575', fg:'#fff' },
+  'NEW':  { bg:'#DC267F', fg:'#fff' },
+  'PTW':  { bg:'#0072B2', fg:'#fff' },
+  'Kids': { bg:'#FFD600', fg:'#000' }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+let mode        = 'ci';          // 'ci' | 'co' | 'lu'
+let soundOn     = true;
+let history     = [];            // last 5 scan results
+let processing  = false;
+let lastCode    = '';
+let lastCodeTs  = 0;
+const DEBOUNCE  = 3000;          // ms — ignore same code re-scanned within 3s
+let qrScanner   = null;
+let manualOpen  = false;
+let audioCtx    = null;
+const isMobile  = /Mobi|Android/i.test(navigator.userAgent);
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Restore saved name
+  const saved = localStorage.getItem('tcl_name');
+  if (saved) document.getElementById('vname').value = saved;
+
+  // Restore sound pref
+  soundOn = localStorage.getItem('tcl_sound') !== 'false';
+  updateSoundBtn();
+
+  // Restore mode
+  const savedMode = localStorage.getItem('tcl_mode') || 'ci';
+  setMode(savedMode, true);
+
+  // Desktop: mark body and manage USB field focus
+  if (!isMobile) {
+    document.body.classList.add('desktop');
+    setupDesktopFocus();
+  }
+});
+
+window.addEventListener('load', () => {
+  if (mode !== 'lu') startCamera();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// MODE
+// ═══════════════════════════════════════════════════════════════
+function setMode(m, init) {
+  mode = m;
+  localStorage.setItem('tcl_mode', m);
+
+  document.body.className = (isMobile ? '' : 'desktop ') + m;
+  ['ci','co','lu'].forEach(x =>
+    document.getElementById('mbtn-'+x).classList.toggle('on', x === m)
+  );
+
+  const isScan = (m !== 'lu');
+  document.getElementById('scan-sec').style.display  = isScan ? 'block' : 'none';
+  document.getElementById('lu-wrap').style.display   = isScan ? 'none'  : 'block';
+  document.getElementById('namebar').style.display   = isScan ? 'flex'  : 'none';
+  document.getElementById('warn').style.display      = 'none';
+
+  if (!init) {
+    if (isScan) {
+      startCamera();
+      if (!isMobile) focusUsb();
+    } else {
+      stopCamera();
+      setTimeout(() => document.getElementById('lu-q').focus(), 100);
+    }
+  }
+
+  // Reset manual input when switching modes
+  closeManual();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CAMERA
+// ═══════════════════════════════════════════════════════════════
+function startCamera() {
+  const launch = () => {
+    qrScanner = new Html5Qrcode('qr-reader');
+    qrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 240, height: 240 } },
+      onScan,
+      () => {}   // silent error callback (fires constantly when no QR in frame)
+    ).catch(() => {
+      showWarn('Camera unavailable — use manual input or USB scanner');
+    });
+  };
+
+  if (qrScanner) {
+    qrScanner.stop().catch(()=>{}).finally(() => {
+      qrScanner = null;
+      launch();
+    });
+  } else {
+    launch();
+  }
+}
+
+function stopCamera() {
+  if (qrScanner) {
+    qrScanner.stop().catch(()=>{});
+    qrScanner = null;
+  }
+}
+
+function onScan(text) {
+  const now = Date.now();
+  if (text === lastCode && now - lastCodeTs < DEBOUNCE) return;
+  lastCode  = text;
+  lastCodeTs = now;
+  processCode(text);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// USB SCANNER (desktop) — hidden input captures keystrokes
+// ═══════════════════════════════════════════════════════════════
+function setupDesktopFocus() {
+  // Re-focus USB field whenever user clicks outside interactive inputs
+  document.addEventListener('click', e => {
+    const skip = ['vname','manual-in','lu-q'];
+    if (!skip.includes(e.target.id)) focusUsb();
+  });
+  focusUsb();
+}
+
+function focusUsb() {
+  document.getElementById('usb-in').focus();
+}
+
+function usbKey(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const val = e.target.value.trim();
+    if (val) {
+      processCode(val);
+      e.target.value = '';
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MANUAL INPUT
+// ═══════════════════════════════════════════════════════════════
+function toggleManual() {
+  manualOpen ? closeManual() : openManual();
+}
+
+function openManual() {
+  manualOpen = true;
+  const inp = document.getElementById('manual-in');
+  const go  = document.getElementById('btn-go');
+  inp.style.display = 'block';
+  go.style.display  = 'block';
+  inp.value = '';
+  inp.focus();
+}
+
+function closeManual() {
+  manualOpen = false;
+  document.getElementById('manual-in').style.display = 'none';
+  document.getElementById('btn-go').style.display    = 'none';
+  document.getElementById('manual-in').value = '';
+  if (!isMobile) focusUsb();
+}
+
+function manualKey(e) {
+  if (e.key === 'Enter') manualGo();
+}
+
+function manualGo() {
+  const val = document.getElementById('manual-in').value.trim();
+  if (val) {
+    processCode(val);
+    document.getElementById('manual-in').value = '';
+    if (!isMobile) closeManual();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CORE: PROCESS A CODE (camera, USB, or manual)
+// ═══════════════════════════════════════════════════════════════
+async function processCode(rawCode) {
+  if (processing) return;
+
+  const volunteer = document.getElementById('vname').value.trim();
+  if (!volunteer) {
+    showWarn('⚠️ Please enter your name before scanning!');
+    return;
+  }
+
+  processing = true;
+  const id = addPending(rawCode);
+
+  try {
+    const action    = mode === 'ci' ? 'checkin' : 'checkout';
+    const timestamp = new Date().toISOString();
+    const url = SCRIPT_URL
+      + '?action='    + encodeURIComponent(action)
+      + '&catalog='   + encodeURIComponent(rawCode)
+      + '&volunteer=' + encodeURIComponent(volunteer)
+      + '&timestamp=' + encodeURIComponent(timestamp);
+
+    const data = await jsonp(url);
+    resolveItem(id, rawCode, data);
+
+  } catch (err) {
+    resolveError(id, rawCode, 'CONNECTION_ERROR');
+  } finally {
+    processing = false;
+    if (!isMobile && mode !== 'lu') focusUsb();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// JSONP (bypasses CORS — required for GitHub Pages → Apps Script)
+// ═══════════════════════════════════════════════════════════════
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb   = '_tcl_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const tag  = document.createElement('script');
+    let done   = false;
+
+    const cleanup = () => {
+      if (tag.parentNode) tag.parentNode.removeChild(tag);
+      delete window[cb];
+    };
+
+    const timer = setTimeout(() => {
+      if (!done) { done = true; cleanup(); reject(new Error('Timeout')); }
+    }, 20000);
+
+    window[cb] = data => {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        cleanup();
+        resolve(data);
+      }
+    };
+
+    tag.onerror = () => {
+      if (!done) { done = true; clearTimeout(timer); cleanup(); reject(new Error('Script error')); }
+    };
+
+    tag.src = url + '&callback=' + cb;
+    document.body.appendChild(tag);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════════
+function addPending(rawCode) {
+  const id = String(Date.now());
+  history.unshift({ id, rawCode, state: 'prc' });
+  if (history.length > 5) history.pop();
+  renderHistory();
+  return id;
+}
+
+function resolveItem(id, rawCode, data) {
+  const item = history.find(h => h.id === id);
+  if (!item) return;
+
+  if (data.success) {
+    Object.assign(item, { state:'ok', name:data.name, section:data.section, source:data.source });
+    playSuccess();
+  } else {
+    Object.assign(item, { state:'err', error:data.error, name:data.name||null, extra:data, rawCode });
+    playError();
+  }
+  renderHistory();
+}
+
+function resolveError(id, rawCode, error) {
+  const item = history.find(h => h.id === id);
+  if (!item) return;
+  Object.assign(item, { state:'err', error, rawCode });
+  playError();
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('hist');
+  if (!history.length) {
+    el.innerHTML = '<div class="hist-empty">Scans will appear here</div>';
+    return;
+  }
+  el.innerHTML = history.map(cardHtml).join('');
+}
+
+function cardHtml(item) {
+  if (item.state === 'prc') {
+    return `<div class="sc prc">
+      <span class="sc-ico">⏳</span>
+      <div class="sc-body"><div class="sc-name">Processing #${esc(item.rawCode)}…</div></div>
+    </div>`;
+  }
+
+  if (item.state === 'ok') {
+    const right = mode === 'ci'
+      ? `<span class="badge" style="background:${badgeBg(item.section)};color:${badgeFg(item.section)}">${esc(item.section||'?')}</span>`
+      : `<div class="src-txt">${esc(item.source||'')}</div>`;
+
+    return `<div class="sc">
+      <span class="sc-ico">✅</span>
+      <div class="sc-body">
+        <div class="sc-name">${esc(item.name)}</div>
+        <div class="sc-sub">#${esc(item.rawCode)}</div>
+      </div>
+      <div class="sc-right">${right}</div>
+    </div>`;
+  }
+
+  // error
+  let main = '⚠️ ERROR';
+  let sub  = 'Scanned value: ' + esc(item.rawCode);
+
+  switch (item.error) {
+    case 'NOT_FOUND':
+      main = '⚠️ NOT FOUND';
+      break;
+    case 'ALREADY_CHECKED_IN':
+      main = '⚠️ ALREADY CHECKED IN';
+      if (item.extra && item.extra.checkedInBy)
+        sub += ` — by ${esc(item.extra.checkedInBy)} at ${fmtTime(item.extra.checkedInAt)}`;
+      break;
+    case 'ALREADY_CHECKED_OUT':
+      main = '⚠️ ALREADY CHECKED OUT';
+      if (item.extra && item.extra.checkedOutBy)
+        sub += ` — by ${esc(item.extra.checkedOutBy)} at ${fmtTime(item.extra.checkedOutAt)}`;
+      break;
+    case 'NO_VOLUNTEER':
+      main = '⚠️ NO NAME ENTERED';
+      break;
+    case 'CONNECTION_ERROR':
+      main = '⚠️ CONNECTION ERROR — try again';
+      break;
+  }
+
+  const nameRow = item.name ? `<div class="sc-name">${esc(item.name)}</div>` : '';
+
+  return `<div class="sc err">
+    <div class="sc-body">
+      <div class="sc-err-main">${main}</div>
+      ${nameRow}
+      <div class="sc-err-sub">${sub}</div>
+    </div>
+  </div>`;
+}
+
+function badgeBg(section) {
+  return (SECTION_COLORS[section] || {bg:'#fff'}).bg;
+}
+function badgeFg(section) {
+  return (SECTION_COLORS[section] || {fg:'#000'}).fg;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COORDINATOR LOOKUP
+// ═══════════════════════════════════════════════════════════════
+async function doSearch() {
+  const q = document.getElementById('lu-q').value.trim();
+  if (!q) return;
+
+  const el = document.getElementById('lu-results');
+  el.innerHTML = '<div style="text-align:center;color:#999;padding:14px">Searching…</div>';
+
+  try {
+    const url  = SCRIPT_URL + '?action=search&q=' + encodeURIComponent(q);
+    const data = await jsonp(url);
+
+    if (!data.results || !data.results.length) {
+      el.innerHTML = '<div style="text-align:center;color:#999;padding:14px">No games found</div>';
+      return;
+    }
+
+    el.innerHTML = data.results.map(g => {
+      const stCls  = g.status === 'Checked In'  ? 's-in'  :
+                     g.status === 'Checked Out'  ? 's-out' : 's-none';
+      const stLbl  = g.status || 'Not Checked In';
+      let   detail = '';
+      if (g.status === 'Checked In'  && g.checkedInBy)  detail = ` — ${esc(g.checkedInBy)} @ ${fmtTime(g.checkedInAt)}`;
+      if (g.status === 'Checked Out' && g.checkedOutBy) detail = ` — ${esc(g.checkedOutBy)} @ ${fmtTime(g.checkedOutAt)}`;
+
+      return `<div class="lr">
+        <div class="lr-name">${esc(g.name)}</div>
+        <div class="lr-detail">
+          #${esc(g.catalogNumber)} &nbsp;|&nbsp; ${esc(g.section)} &nbsp;|&nbsp; ${esc(g.source)}<br>
+          <span class="stat-badge ${stCls}">${stLbl}</span><span style="font-size:.72rem;color:#777">${detail}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+  } catch {
+    el.innerHTML = '<div style="text-align:center;color:red;padding:14px">Connection error</div>';
+  }
+}
+
+function luKey(e) {
+  if (e.key === 'Enter') doSearch();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VOLUNTEER NAME
+// ═══════════════════════════════════════════════════════════════
+function saveName() {
+  localStorage.setItem('tcl_name', document.getElementById('vname').value);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO & VIBRATION
+// ═══════════════════════════════════════════════════════════════
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function beep(freq, dur, type='sine', vol=0.28) {
+  if (!soundOn) return;
+  try {
+    const ctx  = getAudio();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur/1000);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur/1000);
+  } catch(e){}
+}
+
+function playSuccess() {
+  beep(880, 120);
+  setTimeout(() => beep(1100, 90), 130);
+  try { navigator.vibrate(80); } catch(e){}
+}
+
+function playError() {
+  beep(200, 350, 'square', 0.18);
+  try { navigator.vibrate([100,60,100]); } catch(e){}
+}
+
+function toggleSound() {
+  soundOn = !soundOn;
+  localStorage.setItem('tcl_sound', soundOn);
+  updateSoundBtn();
+}
+
+function updateSoundBtn() {
+  document.getElementById('btn-sound').textContent = soundOn ? '🔊' : '🔇';
+  document.getElementById('btn-sound').title = soundOn ? 'Sound ON (tap to mute)' : 'Sound OFF (tap to unmute)';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════
+function showWarn(msg, dur=3500) {
+  const el = document.getElementById('warn');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.style.display = 'none', dur);
+}
+
+function fmtTime(iso) {
+  if (!iso) return '?';
+  try {
+    return new Date(iso).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch { return iso; }
+}
+
+function esc(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
