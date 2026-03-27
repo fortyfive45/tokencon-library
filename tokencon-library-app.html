@@ -41,7 +41,7 @@ body{background:var(--pg);transition:background .25s}
 
 /* ── Camera section ─────────────────────────────────────────── */
 #cam-wrap{padding:6px 12px 2px}
-#qr-reader{width:100%;max-width:260px;margin:0 auto;border-radius:10px;overflow:hidden;background:#000}
+#qr-reader{width:100%;max-width:175px;margin:0 auto;border-radius:10px;overflow:hidden;background:#000}
 /* suppress default html5-qrcode chrome */
 #qr-reader img[alt="Info icon"]{display:none!important}
 #qr-reader__dashboard_section_csr button{display:none!important}
@@ -276,7 +276,7 @@ function startCamera() {
     qrScanner = new Html5Qrcode('qr-reader');
     qrScanner.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 160, height: 160 } },
+      { fps: 10, qrbox: { width: 130, height: 130 } },
       onScan,
       () => {}   // silent error callback (fires constantly when no QR in frame)
     ).catch(() => {
