@@ -40,8 +40,8 @@ body{background:var(--pg);transition:background .25s}
 #warn{display:none;background:#c62828;color:#fff;text-align:center;padding:7px 12px;font-size:.82rem;font-weight:700}
 
 /* ── Camera section ─────────────────────────────────────────── */
-#cam-wrap{padding:8px 12px 4px}
-#qr-reader{width:100%;max-width:420px;margin:0 auto;border-radius:10px;overflow:hidden;background:#000}
+#cam-wrap{padding:6px 12px 2px}
+#qr-reader{width:100%;max-width:260px;margin:0 auto;border-radius:10px;overflow:hidden;background:#000}
 /* suppress default html5-qrcode chrome */
 #qr-reader img[alt="Info icon"]{display:none!important}
 #qr-reader__dashboard_section_csr button{display:none!important}
@@ -120,8 +120,8 @@ body.desktop #usb-indicator{display:block}
 <div id="hdr">
   <h1>🎲 TokenCon Library</h1>
   <div class="mode-row">
-    <button class="mbtn on" id="mbtn-ci" onclick="setMode('ci')">✅ CHECK IN</button>
-    <button class="mbtn"    id="mbtn-co" onclick="setMode('co')">📦 CHECK OUT</button>
+    <button class="mbtn on" id="mbtn-ci" onclick="setMode('ci')">✅ SETUP</button>
+    <button class="mbtn"    id="mbtn-co" onclick="setMode('co')">📦 TEARDOWN</button>
     <button class="mbtn"    id="mbtn-lu" onclick="setMode('lu')">🔍 LOOKUP</button>
   </div>
 </div>
@@ -276,7 +276,7 @@ function startCamera() {
     qrScanner = new Html5Qrcode('qr-reader');
     qrScanner.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 240, height: 240 } },
+      { fps: 10, qrbox: { width: 160, height: 160 } },
       onScan,
       () => {}   // silent error callback (fires constantly when no QR in frame)
     ).catch(() => {
@@ -519,12 +519,12 @@ function cardHtml(item) {
       main = '⚠️ NOT FOUND';
       break;
     case 'ALREADY_CHECKED_IN':
-      main = '⚠️ ALREADY CHECKED IN';
+      main = '⚠️ ALREADY SET UP';
       if (item.extra && item.extra.checkedInBy)
         sub += ` — by ${esc(item.extra.checkedInBy)} at ${fmtTime(item.extra.checkedInAt)}`;
       break;
     case 'ALREADY_CHECKED_OUT':
-      main = '⚠️ ALREADY CHECKED OUT';
+      main = '⚠️ ALREADY TORN DOWN';
       if (item.extra && item.extra.checkedOutBy)
         sub += ` — by ${esc(item.extra.checkedOutBy)} at ${fmtTime(item.extra.checkedOutAt)}`;
       break;
@@ -576,7 +576,8 @@ async function doSearch() {
     el.innerHTML = data.results.map(g => {
       const stCls  = g.status === 'Checked In'  ? 's-in'  :
                      g.status === 'Checked Out'  ? 's-out' : 's-none';
-      const stLbl  = g.status || 'Not Checked In';
+      const stLbl  = g.status === 'Checked In'  ? 'Set Up' :
+                     g.status === 'Checked Out'  ? 'Torn Down' : 'Not Set Up';
       let   detail = '';
       if (g.status === 'Checked In'  && g.checkedInBy)  detail = ` — ${esc(g.checkedInBy)} @ ${fmtTime(g.checkedInAt)}`;
       if (g.status === 'Checked Out' && g.checkedOutBy) detail = ` — ${esc(g.checkedOutBy)} @ ${fmtTime(g.checkedOutAt)}`;
@@ -674,9 +675,3 @@ function esc(s) {
   return String(s||'')
     .replace(/&/g,'&amp;')
     .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
-}
-</script>
-</body>
-</html>
